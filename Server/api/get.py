@@ -15,14 +15,13 @@ def sendFileHeaders(_api_ref, file, fname):
     fs = os.fstat(file.fileno())
     _api_ref.send_header("Content-Length", str(fs[6]))
     _api_ref.send_header("Last-Modified", _api_ref.date_time_string(fs.st_mtime))
-    if fname is not None:
-        _api_ref.send_header("Content-Disposition", 'attachment; filename="%s"' % fname)
+    _api_ref.send_header("Content-Disposition", 'attachment; filename="%s"' % fname)
     _api_ref.end_headers()
 
 
-def returnFile(path, _api_ref, fname=None):
+def returnFile(path, _api_ref):
     with open(path, "rb") as file:
-        sendFileHeaders(_api_ref, file, fname)
+        sendFileHeaders(_api_ref, file, os.path.basename(path))
         shutil.copyfileobj(file, _api_ref.wfile)
     return "File sent!"
 
@@ -124,4 +123,4 @@ class Get(Api):
         if obj is None:
             return "No such object exists!"
         else:
-            return returnFile(obj, _api_ref, id + oformat)
+            return returnFile(obj, _api_ref)
