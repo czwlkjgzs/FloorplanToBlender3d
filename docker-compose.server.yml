@@ -9,19 +9,24 @@ version: '3.8'
 
 services:
   ftbserver:
-    build: ./  # to speed things up you can pull docker image: grebtsew/floorplan-to-blender  # and remove this row
+    build: ./  # 以当前代码为基础构建Docker镜像
     container_name: ftbserver
-    image: grebtsew/floorplan-to-blender # grebtsew/floorplan-to-blender
+    # image: grebtsew/floorplan-to-blender # 不再使用预构建的Docker镜像
     stdin_open: true 
     tty: true
     ports:
-      - 80:80 # Flask gui
-      - 8000:8000 # Rest api
-      - 8001:8001 # Swagger gui
+      - 80:80 # Flask gui 这个不好使，因为对应的html没内容
+      - 8000:8000 # Rest api 所有接口所在的端口
+      - 8001:8001 # Swagger gui 原作者提供的swagger文档地址，但是这个里面有不准确的内容
     environment: 
-      - MODE=server # this is neccessary to activate server mode!
+      - MODE=server # 设置为server模式
     volumes:
-        - ./Server/storage:/home/floorplan_to_blender/Server/storage
+        # - ./Server/storage:/home/floorplan_to_blender/Server/storage
+        - D:/myDockerFiles/floorplan-to-blender/Server/storage:/home/floorplan_to_blender/Server/storage # 映射本地文件到docker容器中，根据自己实际环境进行修改
+    dns:
+      # 防止下载依赖出现问题
+      - 8.8.8.8
+      - 8.8.4.4
 
   scope: # For monitoring of server!
     container_name: weavescope
@@ -33,8 +38,18 @@ services:
     labels:
       - "works.weave.role=system"
     volumes:
+      # 下面两个我也不知道要不要处理，但是保持下面这样不动，运行时也没问题
       - "/var/run/docker.sock:/var/run/docker.sock:rw" # linux
       - "/usr/local/bin/docker:/usr/bin/docker:rw"  # windows
     command:
       - "--probe.docker=true"
-      #- "--weave=false"
+      - "--weave=false"
+    # 防止下载依赖出现问题
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -1,207 +1,80 @@
-<p align="center">
-  <img width="460" height="300" src="Images/Logo/logo.png">
-</p>
+# FloorplanToBlender3d
 
-![license](https://img.shields.io/github/license/grebtsew/FloorplanToBlender3d)
-![dockerhub](https://img.shields.io/badge/dockerhub-active-green)
-![size](https://img.shields.io/github/repo-size/grebtsew/FloorplanToBlender3d)
-![commit](https://img.shields.io/github/last-commit/grebtsew/FloorplanToBlender3d)
-<!-- TODO Add more relevant badges! -->
+原仓库地址：https://github.com/grebtsew/FloorplanToBlender3d/
 
+本人使用 Windows11 和 Docker Desktop 部署
 
-![Demo](Images/Demos/powerpoint.gif)
+> 说明
+> 1. 本人只运行了server模式，其他模式未测试
+> 2. 当前文档内容与 docker-compose.server.yml 相互关联
 
-<details>
-  <summary><strong>Table of Contents</strong> (click to expand)</summary>
+## 我的改动
 
-<!-- toc -->
+1. 不再使用预构建的Docker镜像，而是以当前prod分支代码为基础构建镜像
+2. 优化了 docker-compose.server.yml 文件，增加了一些配置，优化了因国内外网络差异导致依赖找不到、作者原代码报错等各种奇怪问题
+3. 修改server_config.ini配置文件，使 RestApi 可以被跨域访问
 
-- [About](#about)
-- [How-To](#how-to)
-  - [Run on Docker](#run-on-docker)
-  - [Run locally on OS](#run-locally-on-os)
-    - [Run Tutorial](#run-tutorial)
-  - [ConfigFile](#configfile)
-  - [StackingFile](#stackingfile)
-- [Demos](#demos)
-- [Documentation](#documentation)
-- [Testing](#testing)
-- [Contribute](#contribute)
-- [Known Issues](#Known-Issues)
-- [License](#license)
-<!-- tocstop -->
+## 部署方式
 
-</details>
+1. 确保本地的Docker支持docker-compose，并且docker镜像地址可以正常使用
 
+    本人使用的镜像地址是：https://docker.xuanyuan.me 配置方式如下 
+    ```json
+    {
+        ...
+        "registry-mirrors": [
+            "https://docker.xuanyuan.me"
+        ]
+    }
+    ```
+2. 进入到当前项目根目录下，执行以下命令
+   ```bash
+   docker-compose -f docker-compose.server.yml up
+   ```
 
-# About
-The virtualization of real life objects has been a hot topic for several years. As I started
-learning about 3d modelling in [Blender3d](https://www.blender.org/) I thought of the idea to use simple
-imaging on floorplans to automatically create corresponding 3d models. It is much easier than it
-sounds and uses a low amount of resources, enabling it to be used on low hardware.
- By utilizing Blender3d, all created objects will be easy to transfer
-  to any other 3d rendering program. Such as [Unity](https://unity.com/), [Unreal Engine](https://www.unrealengine.com/en-US/)
- or [CAD](https://www.autodesk.com/solutions/cad-software). 
+3. 若Docker Desktop里查看两个容器都正常启动，则部署完成
 
-# Contents
-This repository contains the floorplan to blender library **FTBL** along with example scripts for converting an image to a 3d model **./create_blender_project_from_floorplan.py**. The repository also contains a server that receives images and converts them into 3d models using the **FTBL** library. The Server contains a [Swagger API](https://swagger.io/) gui and is monitored using a [weavescope](https://github.com/weaveworks/scope) container. Read more about the server implementation [here](./Server/README.md). To allow developers to utilize more functionality a Jupyter tutorial has been added to the project, explaining some of the development steps and functions of the library. Read more about the tutorial [here](./Docs/README.md). Stacking is now also added as a core feature read more about how to use stacking below.
+## API 端点和使用方法
+服务器提供了三种类型的请求处理：GET、POST 和 PUT。以下是主要的 API 端点
 
-# How-To
-This part contains information about how to setup and execute the example script.
+### 1. 查看 API 文档
+您可以通过访问 Swagger UI 界面来查看完整的 API 文档：
 
-<span style="color:yellow">**NOTE**</span>
-: Using other versions of the required programs and libraries than specified in Dockerfiles might require changes in the implementation. It is only guaranteed that this implementation will work if the assigned versions and all requirements are met.
-
-<span style="color:yellow">**NOTE**</span>
-: To avoid any version related problems use the Docker implementation.
-
-## Run on Docker
-Firstly you need to install a suitable [Docker](https://www.docker.com/) environment on your device.
-This project contains a `DockerFile` which uses the `Ubuntu 18.04` image so make sure your docker environment is set to linux containers.
-
-This project is linked to [Docker Hub](https://hub.docker.com/r/grebtsew/floorplan-to-blender) which means a maintained and prebuilt container can be pulled directly by running:
-
-```bash
- docker pull grebtsew/floorplan-to-blender
+```http request
+http://localhost:8001
 ```
 
-The dockerfile is divided into three modes. The script mode where the example script can be tested. 
-The server which starts a hosting server instance with a Swagger Api. 
-The jupyter notebook where some tutorials and examples are further explained.
+### 2. 基本工作流程
+将平面图转换为 3D 模型的基本工作流程是：
+1. 创建一个 ID（POST /create）
+2. 上传图片（PUT /create）
+3. 转换图片为 3D 模型（POST /transform）
+4. 查看是否转换完成（GET /processes）
+5. 下载 3D 模型（GET /object）
 
-By using the different docker-compose files these modes are automatically selected for you.
+或者，可以一次性完成上传和转换（PUT /createandtransform）
 
-<span style="color:blue">**NOTE**</span>
-: For more information about how the dockerfile and docker-compose files can be used to build and run the image to add your own content read more [here](./Docs/README.md).
+### 3. 主要 API 功能
 
-To pull and run the container together in a one line command run:
-```bash
-# For Script mode:
- docker-compose run ftb
-# For Server mode: Read more "./Server/README.md"
- docker-compose -f docker-compose.server.yml up
-# For jupyter mode: Read more "./Docs/README.md"
- cd ./Docs
- docker-compose up
-```
+> 注：有些API需要提供file参数，file参数不可直接拼接在url后面，需要使用`multipart/form-data`格式，详情查阅swagger文档
 
-**NOTE**: When changing between modes the container sometimes need to be rebuild, that can be done by adding the --build flag to the commands above.
-
-## Run locally on OS
-This tutorial will describe how to install this implementation directly on your device.
-If you are a `Linux/Ubuntu` user, look at `Dockerfile` for better instructions.
-
-These are the programs that are required to run this implementation.
-
-* [Blender3d >  2.93](https://www.blender.org/)
-* `Python >== 3.8.0`
-
-Clone or download this repo:
-```git
-git clone https://github.com/grebtsew/FloorplanToBlender3d.git
-````
-
-With a suitable `blender`, `python` and `python pip` installed you can have `Python3 pip` install all required  packages by running:
-
-```bash
- pip install -r requirements.txt
-```
-
-### Run Tutorial
-This tutorial takes you through the execution of this program.
-
-1. Receive floorplan as image, from pdf or by using other method (for example paint)
-2. (Optional) create a new ConfigFile in `Configs` folder or StackingFile in `Stacking` folder.
-2. Run python script `create_blender_project_from_floorplan.py`
-3. Follow instructions
-4. Created `floorplan.blender` files will be saved under `./target`
-
-<span style="color:blue">**NOTE**</span>
-: For more information about alternative ways of executing the implementation read more [here](./Docs/README.md).
-
-## Update Settings in Config files
-When the implementation run the first time a `system.ini` and ``default.ini` file is created.
-
-## ConfigFile
-With the new update of the implementation `ConfigFiles` are added. These files describe information about each floorplan class instance. In this file model transform can be changed. If no config is added, default will be used. To generate a new default file remove or move the old one. Next to the default config file is the system default config file containing additional settings for the entire system. All configs are placed inside the `Configs` folder.
-
-## StackingFile
-With the new update the `StackingFile` was added. StackingFiles are used to create worlds of floorplans at once. Using a self developed parsing language. See the example files in the `Stacking` folder.
-
-# Demos
-
-## Create Floorplan in Blender3d
-Here we demo the program. First of we need a floorplan image to process.
-We use `example.png`, see below:
-![Floorplanexample](Images/Examples/example.png)
-
-Next up we execute our script and answer the questions:
-![RunScriptDemo](Images/Demos/RunScriptDemo.gif)
-
-Finally we can open the newly created floorplan.blender file and see the result:
-
-![OpenFiledemo](Images/Demos/OpenFiledemo.gif)
-
-<span style="color:blue">**NOTE**</span>: This demo only uses default settings. For instance coloring is by default random.
-
-## Create several floorplans using Stacking
-Here we instead use StackingFiles to create a world containing several floorplans.
-![RunScriptDemo](Images/Demos/demoStacking1.gif)
-Show the result.
-![RunScriptDemo](Images/Demos/demoStacking2.gif)
-
-## Floorplan To Blender Server with Swagger API
-The server implementation comes with an automatically generated [Swagger API](https://swagger.io/) page.
-
-![swagger](Images/Demos/swaggerdemo.gif)
-
-## Usages in other applications
-If you are interested in code for these demos they are accessable in another repository [here](https://github.com/grebtsew/ARFloorplanDemo).
-
-### AR foundation place floorplans in world
-
-<p align="left">
-  <img width="460" height="300" src="Images/Demos/ardemo.gif">
-</p>
-
-### AR foundation real life scaling of floorplans
-
-<p align="left">
-  <img width="460" height="300" src="Images/Demos/arrealifedemo.gif">
-</p>
-
-### AR foundation interior design of floorplans
-
-<p align="left">
-  <img width="460" height="300" src="Images/Demos/PlaceObjectInRoomDemo.gif">
-</p>
-
-### AR foundation with MediaPipe Hands interactions
-
-<p align="left">
-  <img width="460" height="300" src="Images/Demos/InteractDemo.gif">
-</p>
-
-# Documentation
-For more information and tutorial of how to use the ftb library do checkout [docs](Docs/README.md)!
-
-# Testing
-Vital and core functionality are tested with pytest. To run tests yourself enter `Testing`-folder and run:
-```cmd
-pytest
-```
+#### GET 请求
+- `http://localhost:8000/?func=info` - 获取服务器信息
+- `http://localhost:8000/?func=all` - 获取所有文件
+- `http://localhost:8000/?func=images` - 获取所有图片
+- `http://localhost:8000/?func=objects` - 获取所有对象
+- `http://localhost:8000/?func=processes` - 获取所有进程
+- `http://localhost:8000/?func=image?id=<id>` - 获取特定 ID 的图片
+- `http://localhost:8000/?func=object?id=<id>&oformat=<format>` - 获取特定 ID 的对象
+- `http://localhost:8000/?func=configfiles` - 获取所有配置文件
+- `http://localhost:8000/?func=stackingfiles` - 获取所有堆叠文件
+#### POST 请求
+- `http://localhost:8000/?func=create` - 创建新的 ID 和哈希值
+- `http://localhost:8000/?func=remove?id=<id>` - 删除指定 ID 关联的所有文件
+- `http://localhost:8000/?func=transform?func=transform&id=<id>&oformat=<format>` - 将图片转换为 3D 对象
+#### PUT 请求
+- `http://localhost:8000/?func=create?id=<id>&hash=<hash>&iformat=<format>` - 上传图片
+- `http://localhost:8000/?func=createandtransform?id=<id>&hash=<hash>&iformat=<format>&oformat=<format>` - 上传图片并开始转换过程
 
 
-# Contribute
-Let me know if you want to contribute to this project, also if you want me to add more
-functions or answer questions, let me know!
 
-# Known Issues
-These are some known and relevant issues with the current implementation:
-* Floorplan images needs to be quite small for detections to work at this time. If you plan on using a large image, consider downsizing it.
-* Required programs and libraries might change in future versions, this might require some changes in this implementation for it to work. If you insist on not using the versions specified in Dockerfile, a coding effort might be required.
-
-# License
-[GNU GENERAL PUBLIC LICENSE](license) Version 3, 29 June 2007
-
-COPYRIGHT @ Grebtsew 2021
