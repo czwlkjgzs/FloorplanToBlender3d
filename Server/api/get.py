@@ -9,18 +9,20 @@ Copyright (C) 2021 Daniel Westberg
 """
 
 
-def sendFileHeaders(_api_ref, file):
+def sendFileHeaders(_api_ref, file, fname):
     _api_ref.send_response(200)
     _api_ref.send_header("Content-type", "multipart/form-_data")
     fs = os.fstat(file.fileno())
     _api_ref.send_header("Content-Length", str(fs[6]))
     _api_ref.send_header("Last-Modified", _api_ref.date_time_string(fs.st_mtime))
+    if fname is not None:
+        _api_ref.send_header("Content-Disposition", 'attachment; filename="%s"' % fname)
     _api_ref.end_headers()
 
 
-def returnFile(path, _api_ref):
+def returnFile(path, _api_ref, fname=None):
     with open(path, "rb") as file:
-        sendFileHeaders(_api_ref, file)
+        sendFileHeaders(_api_ref, file, fname)
         shutil.copyfileobj(file, _api_ref.wfile)
     return "File sent!"
 
@@ -122,4 +124,4 @@ class Get(Api):
         if obj is None:
             return "No such object exists!"
         else:
-            return returnFile(obj, _api_ref)
+            return returnFile(obj, _api_ref, id + oformat)
