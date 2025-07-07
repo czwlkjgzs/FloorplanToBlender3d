@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>房屋平面图 转换 房屋3D建模</title>
+    <style>
+        /*
+        * FloorplanToBlender3d 上传下载页面样式
+        */
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+
+        .upload-container {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 5px;
+            background-color: #fafafa;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .upload-container:hover {
+            border-color: #3498db;
+            background-color: #f0f8ff;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .btn:hover {
+            background-color: #2980b9;
+        }
+
+        .btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .progress-container {
+            margin-top: 20px;
+        }
+
+        .progress {
+            width: 100%;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: #2ecc71;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .collapsible {
+            background-color: blue;
+            color: white;
+            cursor: pointer;
+            padding: 18px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 15px;
+        }
+
+        .active, .collapsible:hover {
+            background-color: #555;
+        }
+
+        .content {
+            padding: 0 18px;
+            display: none;
+            overflow: hidden;
+            background-color: #f1f1f1;
+        }
+
+        .slidecontainer {
+            width: 100%;
+            background: blue;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            width: 200px;
+            height: 25px;
+            background: slategray;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+        }
+
+        .slider:hover {
+            opacity: 1;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            background: blue;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            background: blue;
+            cursor: pointer;
+        }
+        .upload-container.drag-over {
+            border-color: #2ecc71;
+            background-color: #e8f5e9;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .file-info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+        .progress-container {
+            display: none;
+        }
+        .result-container {
+            margin-top: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            display: none;
+        }
+        .format-selection {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .format-selection h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .format-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .format-option {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            cursor: pointer;
+            width: calc(33.33% - 10px);
+        }
+        .format-option input {
+            margin-right: 5px;
+        }
+        @media (max-width: 768px) {
+            .format-option {
+                width: calc(50% - 10px);
+            }
+        }
+        @media (max-width: 480px) {
+            .format-option {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>房屋平面图 转换 房屋3D建模</h1>
+
+    <div class="upload-container" id="dropArea">
+        <p>拖拽文件到此处或点击上传</p>
+        <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.tiff,.bmp,.gif">
+        <button class="btn" id="uploadBtn">选择文件</button>
+        <div class="file-info" id="fileInfo"></div>
+    </div>
+
+    <div class="format-selection">
+        <h3>选择输出格式</h3>
+        <div class="format-options">
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".blend" checked> Blender (.blend)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".obj"> OBJ (.obj)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".fbx"> FBX (.fbx)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".gltf"> GLTF (.gltf)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".stl"> STL (.stl)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".3ds"> 3DS (.3ds)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".x3d"> X3D (.x3d)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".dxf"> DXF (.dxf)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".svg"> SVG (.svg)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".mtl"> MTL (.mtl)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".webm"> WEBM (.webm)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".vrml"> VRML (.vrml)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".usd"> USD (.usd)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="outputFormat" value=".udim"> UDIM (.udim)
+            </label>
+        </div>
+    </div>
+
+    <button class="btn" id="processBtn" disabled>开始处理</button>
+
+    <div class="progress-container" id="progressContainer">
+<!--        <p>处理中，请稍候...</p>-->
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+    </div>
+
+    <div class="status" id="statusMessage"></div>
+
+    <div class="result-container" id="resultContainer">
+        <h3>处理完成</h3>
+        <p>您的文件已处理完成，可以下载结果文件。</p>
+        <button class="btn" id="downloadBtn">下载结果</button>
+    </div>
+</div>
+
+<div class="footer">
+<!--    <p>FloorplanToBlender3d &copy; 2023</p>-->
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const apiUrl = 'http://127.0.0.1:8000';
+        let selectedFile = null;
+
+        let id = null;
+        let hash = null;
+        let oformat = null;
+
+        // DOM元素
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const processBtn = document.getElementById('processBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const statusMessage = document.getElementById('statusMessage');
+        const resultContainer = document.getElementById('resultContainer');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const formatOptions = document.getElementsByName('outputFormat');
+
+        // 事件监听
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            selectedFile = e.target.files[0];
+            console.log('selectedFile', selectedFile)
+            if (selectedFile) {
+                handleFile(selectedFile);
+            }
+        });
+
+        // 拖放文件功能
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => {
+                dropArea.classList.add('drag-over');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => {
+                dropArea.classList.remove('drag-over');
+            }, false);
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            selectedFile = dt.files[0];
+            if (selectedFile) {
+                handleFile(selectedFile);
+            }
+        }, false);
+
+        // 处理文件
+        function handleFile(file) {
+            fileInfo.textContent = `已选择: ${file.name} (${formatFileSize(file.size)})`;
+            processBtn.disabled = false;
+        }
+
+        // 获取选中的输出格式
+        function getSelectedFormat() {
+            for(let i = 0; i < formatOptions.length; i++) {
+                if(formatOptions[i].checked) {
+                    return formatOptions[i].value;
+                }
+            }
+            return '.blend'; // 默认格式
+        }
+
+        // 处理按钮点击事件
+        processBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            // 隐藏下载框
+            resultContainer.style.display = 'none';
+
+            // 进度条显示
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+
+            await getIdAndHash();
+            uploadAndProcess(selectedFile);
+        });
+
+        // 获取新的id和hash
+        function getIdAndHash(){
+            return new Promise((resolve, reject) => {
+
+                showStatus('正在创建实例...', 'success');
+                progressBar.style.width = '20%';
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', `${apiUrl}?func=create`, true);
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        const values = xhr.responseText.split(", ");
+                        id = values[0].replace(/['"]/g, '').replace(/[(]/g, '').replace(/[)]/g, '');
+                        hash = values[1].replace(/['"]/g, '').replace(/[(]/g, '').replace(/[)]/g, '');
+                        resolve();
+                    } else {
+                        reject(new Error(`请求失败，状态码: ${xhr.status}`));
+                    }
+                };
+                xhr.onerror = function() {
+                    reject(new Error('请求失败，网络错误'));
+                };
+                xhr.send();
+            });
+        }
+
+        // 上传并处理文件
+        function uploadAndProcess(file) {
+            // 获取文件扩展名
+            const fileExt = getFileExtension(file.name);
+
+            // 获取输出格式
+            oformat = getSelectedFormat();
+
+            fetch(`${apiUrl}?func=createandtransform&id=${id}&hash=${hash}&iformat=${fileExt}&oformat=${oformat}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                },
+                body: file
+            }).then(response => {
+                // 响应成功
+                if (response.status === 200){
+                    progressBar.style.width = '40%';
+                    showStatus('实例上传成功，正在上传图片...', 'success');
+                }
+            }).then(() => {
+                // 回调函数开始
+
+                progressBar.style.width = '60%';
+                showStatus('图片上传成功，正在转换...', 'success');
+                checkProcessStatus();
+
+            }).catch(e => {
+                console.log("uploadAndProcess error: ", e)
+            })
+        }
+
+        // 检查处理状态
+        function checkProcessStatus() {
+            progressBar.style.width = '80%';
+
+            // 使用 setInterval 定期检查状态
+            const intervalId = setInterval(() => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', `${apiUrl}?func=processes`, true);
+                xhr.onload = function() {
+                    if (xhr.status === 200 && xhr.responseText !== 'Function unavailable!') {
+                        let processes = JSON.parse(xhr.responseText);
+                        let process = processes.find(item => item.in === id);
+                        if (process.status === 'Done') {
+                            clearInterval(intervalId); // 停止定时器
+                            progressBar.style.width = '100%';
+                            showStatus('转换完成！', 'success');
+                            resultContainer.style.display = 'block';
+                        }
+                    }
+                };
+                xhr.send();
+            }, 2000);
+
+        }
+
+        // 下载结果
+        downloadBtn.addEventListener('click', () => {
+            window.location.href = `${apiUrl}?func=object&id=${id}&oformat=${oformat}`;
+        });
+
+        // 辅助函数
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'status ' + type;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' bytes';
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            else return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        function getFileExtension(filename) {
+            return '.' + filename.split('.').pop();
+        }
+    });
+</script>
+</body>
+</html>

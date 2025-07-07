@@ -1,4 +1,7 @@
-from . import generate
+import sys
+sys.setrecursionlimit(5000)  # 增加最大递归深度限制
+
+from FloorplanToBlenderLib import generate, config, transform
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 from math import atan2, degrees
